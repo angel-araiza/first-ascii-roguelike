@@ -31,12 +31,71 @@ function initActors() {
       //pick a random postion that is both a floor and not occupied
       actor.y = randomInt(ROWS);
       actor.x = randomInt(COLS);
-    } while ( map[actor.y][actor.x] = '#'|| actorMap[actor.y + "_" + actor.x] != null );
+    } while ( map[actor.y][actor.x] === '#'|| actorMap[actor.y + "_" + actor.x] != null );
     
     //add references to the actor to the actors list & map
-    actorMap[actor.y 
-    ]
+    actorMap[actor.y + "_" + actor.x] = actor;
+    actorList.push(actor);
   }
+
+  //the player is the first actor in the list
+  player = actorList[0];
+  livingEnemies = ACTORS -1;
+}
+
+function drawActors() {
+  for(let a in actorList) {
+    if (actorList[a].hp > 0)
+      asciidisplay[actorList[a].y][actorList[a].x].setText(a == 0?''+player.hp:'e');
+  }
+}
+
+function canGo(actor,dir) {
+  return actor.x+dir.x >= 0 &&
+    actor.x+dir.x <= COLS -1 &&
+    actor.y+dir.y >= 0 &&
+    actor.y + dir.y <= ROWS -1 &&
+    map[actor.y+dir.y][actor.x +dir.x] == 'x';
+}
+
+function moveTo(actor dir) {
+  //check if actor can move in the given direction
+  if (!canGo(actor, dir))
+    return false;
+
+  //moves actor to the new location
+  let newKey = (actor.y + dir.y) + '_' + (actor.x + dir.x);
+  //if the destination tile has an actor in it
+  if (actorMap[newKey] != null){
+    //decrement hit points of the actor at the destination tile
+    let victim = actorMap[newKey];
+    victim.hp--;
+
+    //if it's dead remove reference
+    if (victim.hp == 0) {
+      actorMap[newKey] = null;
+      actorList[actorList.indexOf(victim)] = null;
+      if (victim != player){
+        livingEnemies--;
+        if(livingEnemies ==0){
+          //victory message
+          let victory = game.add.text(game.world.centerX, game.world.centerY, 'Victory!\nCtrl+r to restart', {fill: '#2e2', align:"center"});
+          victory.anchor.setTo(0.5, 0.5);
+        }
+      }
+    }
+  } else{
+      //remove reference to the actor's old position
+      actorMap[actor.y + '_' + actor.x] = null;
+
+      //update postion
+      actor.y += dir.y;
+      actor.x += dir.x;
+
+      //add reference to the actor's new postion
+      actorMap[actor.y + '_' + actor.x] = actor;
+  }
+  return true;
 }
 
 //intialize phaser, call create() once done
@@ -103,9 +162,15 @@ function create(){
       newRow.push( initCell('', x, y) );
   }
   drawMap();
+  
+  //initalize actors
+  initActors();
+
+  drawActors();
+
 }
 function initCell(chr, x, y){
   //add a single cell in a given position to the ascii display
   const style = {font: FONT + "px monospace", fill:"#fff"};
-  return game.add.text(32*x, 32*y, chr, style)
+  return game.add.text(FONT*0.6*x, FONT*y, chr, style)
 }
